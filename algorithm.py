@@ -1,5 +1,8 @@
 import time
 
+# Birim başına en fazla kaç “puan yükseldi” satırı yazılsın; fazlası özetlenir (süre + arayüz).
+_MAX_DETAIL_IMPROVEMENT_LOGS_PER_UNIT = 8
+
 
 def solve_bounded_knapsack(products, budget, log_callback=None, log_delay=0.0):
     budget = int(budget)
@@ -23,12 +26,21 @@ def solve_bounded_knapsack(products, budget, log_callback=None, log_delay=0.0):
             if log_delay > 0:
                 time.sleep(log_delay)
 
+    total_units = len(expanded_items)
+    log(
+        f"Hesaplama başladı: {total_units} birim ürün, bütçe {budget}. "
+        f"Her birimde ilk birkaç DP iyileşmesi ayrıntılı; sonrası özet (süre için sınır)."
+    )
+
     for item in expanded_items:
         price = item["price"]
         importance = item["importance"]
         name = item["name"]
 
         log(f"--- {name} inceleniyor (Fiyat: {price}, Önem: {importance}) ---")
+
+        improvement_count = 0
+        truncated_notice_shown = False
 
         for current_budget in range(budget, price - 1, -1):
             previous_value = dp[current_budget]
@@ -37,12 +49,23 @@ def solve_bounded_knapsack(products, budget, log_callback=None, log_delay=0.0):
             if new_value > previous_value:
                 dp[current_budget] = new_value
                 selected[current_budget] = selected[current_budget - price] + [item]
-                log(
-                    f"Bütçe {current_budget} için: {name} eklendi, "
-                    f"toplam puan {previous_value} -> {new_value} yükseldi."
-                )
-            else:
-                log(f"Bütçe yetersiz veya verimsiz: {name} bu adımda değerlendirilmedi.")
+                improvement_count += 1
+                if improvement_count <= _MAX_DETAIL_IMPROVEMENT_LOGS_PER_UNIT:
+                    log(
+                        f"Bütçe {current_budget} için: {name} eklendi, "
+                        f"toplam puan {previous_value} -> {new_value} yükseldi."
+                    )
+                elif not truncated_notice_shown:
+                    log(
+                        "  … (aynı birimde çok sayıda benzer DP güncellemesi: "
+                        f"ayrıntı kısaltıldı, toplam sayı birim sonunda)"
+                    )
+                    truncated_notice_shown = True
+
+        if improvement_count > _MAX_DETAIL_IMPROVEMENT_LOGS_PER_UNIT:
+            log(f"  → Bu birimde toplam {improvement_count} DP iyileştirmesi yapıldı.")
+        elif improvement_count == 0:
+            log("  (Bu birim bu aşamada hiçbir bütçe için iyileştirme getirmedi.)")
 
     best_items = selected[budget]
 

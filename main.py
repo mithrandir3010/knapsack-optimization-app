@@ -541,7 +541,7 @@ class KnapsackGUI:
                 selected_products,
                 budget,
                 log_callback=lambda message: self.worker_messages.put(("log", message)),
-                log_delay=0.01,
+                log_delay=0.0,
             )
             excluded_items = self.build_excluded_items(selected_products, result["selected_items"])
             self.worker_messages.put(("done", (result, budget, excluded_items)))
